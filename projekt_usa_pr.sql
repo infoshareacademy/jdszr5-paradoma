@@ -8,15 +8,31 @@ from primary_results pr
 group by pr.candidate 
 order by all_votes DESC 
 
+with table1 as -- stany wykluczone z analizy z powodu niedopasowanych fips'ow
+(select 
+	pr.state,
+	count (*) as num_counties
+from primary_results pr 
+where pr.fips like '9%'
+group by pr.state)
+
+select *
+from table1
+where num_counties > 20
+
+select *
+from primary_results pr 
+where pr.state not in ('Alaska', 'Connecticut', 'Kansas', 'Maine', 'Massachusetts', 'North Dakota', 'Rhode Island', 'Vermont', 'Wyoming')
+
 --definicja tabeli dla kategorii etnicznoœæ
 
 create table ethnicity as
 select
-	pr.county ,
+	cf.fips,	
 	pr.state ,
-	coalesce(cf.fips, pr.fips) as fips,
-	cf.area_name,
 	pr.state_abbreviation,
+	pr.county ,
+	cf.area_name,
 	pr.candidate ,
 	pr.party ,
 	pr.votes ,
@@ -32,7 +48,8 @@ select
 	cf."RHI825214" as white_alone,
 	cf."POP645213" as foreign_born
 from county_facts cf 
-left join primary_results pr on cf.fips = pr.fips 
+join primary_results pr on cf.fips = pr.fips 
+where pr.state not in ('Alaska', 'Connecticut', 'Kansas', 'Maine', 'Massachusetts', 'North Dakota', 'Rhode Island', 'Vermont', 'Wyoming')
 order by cf.fips 
 
 --korelacje dla poszczególnych partii
@@ -101,6 +118,8 @@ from table2
 
 -- jeœli jest korelacja w ramach partii to mo¿na wykonaæ korelacje dla poszczególnych kandydatów
 
+
+
 --na któr¹ partiê / kandydata g³osowa³y hrabstwa, w których poszczególne grupy etniczne s¹ najbardziej liczne
 
 with table_baa as -- obliczenie przedzia³ów
@@ -128,12 +147,42 @@ select 	-- w których stanach jest najwiêcej hrabstw, w których mieszka dana grup
 	count(*) as num_county
 from ethnicity e 
 where e.black_african_american between 63.8 and 85.1
-group by e.state 
+group by e.state
 order by num_county desc
+
+select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
+	cf.fips ,
+	cf.area_name ,
+	cf."RHI225214" ,
+	cf."SEX255214"
+from county_facts cf 
+where cf.fips like '%000' 
+order by cf."RHI225214" desc
+limit 10
+
+-- jaki faktycznie wp³yw na wybory w danych stanach mia³a okreœlona grupa etniczna
+with table_baa as
+(select 
+	pr.state ,
+	pr.party ,
+	pr.candidate ,
+	sum(pr.votes) as sum_votes
+from primary_results pr 
+where pr.state in (select e.state from ethnicity e where e.black_african_american between 63.8 and 85.1)
+group by pr.candidate, pr.party, pr.state 
+order by pr.state asc, sum_votes desc)
+
+select 
+	state,	
+	party,
+	sum(sum_votes) sum_votes_state
+from table_baa
+group by state, party
+order by state asc, sum_votes_state desc
 
 with table_es_baa as
 (select 	-- jakie to s¹ hrabstwa i jaki w nich jest stosunek kobiet do mê¿czyzn
-	e.area_name ,
+	distinct(e.area_name) ,
 	e.state ,
 	e.black_african_american ,
 	s.women_in_county 
@@ -149,15 +198,7 @@ select
 	mode() within group (order by women_in_county) mode_women
 from table_es_baa
 
-select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
-	e.area_name ,
-	e.black_african_american, 
-	s.women_in_county
-from ethnicity e
-join sex s on e.fips = s.fips
-where e.black_african_american is not null and e.fips like '%000'
-order by e.black_african_american desc
-limit 5
+
 
 
 
@@ -173,35 +214,55 @@ select -- obliczenie granicy przedzia³u z najbardziej liczn¹ grup¹
 	(max_ia - interval_ia)
 from table_ia
 
-
-SELECT 
-	e.party , 
-	sum(e.votes) as sum_votes
-from ethnicity e 
-where e.indian_alaska between 69.1 and 92.2 and e.party is not null
-group by e.party 
-order by sum_votes DESC
-
 SELECT 
 	distinct(e.candidate),
 	e.party,
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from ethnicity e 
-where e.indian_alaska between 69.1 and 92.2 and e.candidate is not null
+where e.indian_alaska between 69.1 and 92.2 
 order by sum_votes_candidate DESC 
 
 select 	-- w których stanach jest najwiêcej hrabstw, w których mieszka dana grupa etniczna
 	e.state,
-	count(*) over (partition by e.state)  as num_county,
-	e.fips 
+	count(*)  as num_county
 from ethnicity e 
 where e.indian_alaska between 69.1 and 92.2
+group by e.state 
 order by num_county desc
+
+select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
+	cf.area_name ,
+	cf."RHI325214" ,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000'
+order by cf."RHI325214" desc
+limit 10
+
+-- jaki faktycznie wp³yw na wybory w danych stanach mia³a okreœlona grupa etniczna
+with table_ia as
+(select 
+	pr.state ,
+	pr.party ,
+	pr.candidate ,
+	sum(pr.votes) as sum_votes
+from primary_results pr 
+where pr.state in (select e.state from ethnicity e where e.indian_alaska between 69.1 and 92.2)
+group by pr.candidate, pr.party, pr.state 
+order by pr.state asc, sum_votes desc)
+
+select 
+	state,	
+	party,
+	sum(sum_votes) sum_votes_state
+from table_ia
+group by state, party
+order by state asc, sum_votes_state desc
 
 with table_es_ia as
 (select 	-- jakie to s¹ hrabstwa i jaki w nich jest stosunek kobiet do mê¿czyzn
-	e.area_name ,
+	distinct(e.area_name) ,
 	e.state ,
 	e.indian_alaska ,
 	s.women_in_county 
@@ -217,15 +278,7 @@ select
 	mode() within group (order by women_in_county) mode_women
 from table_es_ia
 
-select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
-	e.area_name,
-	e.indian_alaska ,
-	s.women_in_county
-from ethnicity e
-join sex s on e.fips = s.fips 
-where e.fips like '%000'
-order by e.indian_alaska desc
-limit 5
+
 
 
 
@@ -248,16 +301,45 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from ethnicity e 
-where e.asian between 31.8 and 42.5 and e.candidate is not null
+where e.asian between 31.8 and 42.5
 order by sum_votes_candidate DESC 
 
 select 	-- w których stanach jest najwiêcej hrabstw, w których mieszka dana grupa etniczna
-	coalesce(e.state, e.area_name),
-	count(*) over (partition by e.state)  as num_county,
-	e.fips 
+	e.state,
+	count(*) as num_county
 from ethnicity e 
 where e.asian between 31.8 and 42.5
+group by e.state 
 order by num_county desc
+
+-- jaki faktycznie wp³yw na wybory w danych stanach mia³a okreœlona grupa etniczna
+with table_a as
+(select 
+	pr.state ,
+	pr.party ,
+	pr.candidate ,
+	sum(pr.votes) as sum_votes
+from primary_results pr 
+where pr.state in (select e.state from ethnicity e where e.asian between 31.8 and 42.5)
+group by pr.candidate, pr.party, pr.state 
+order by pr.state asc, sum_votes desc)
+
+select 
+	state,	
+	party,
+	sum(sum_votes) sum_votes_state
+from table_a
+group by state, party
+order by state asc, sum_votes_state desc
+
+select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
+	cf.area_name ,
+	cf."RHI425214" ,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000'
+order by cf."RHI425214" desc
+limit 10
 
 with table_es_a as
 (select 	-- jakie to s¹ hrabstwa i jaki w nich jest stosunek kobiet do mê¿czyzn
@@ -268,6 +350,7 @@ with table_es_a as
 from ethnicity e 
 join sex s on e.fips = s.fips 
 where e.asian between 31.8 and 42.5
+group by 1,2,3,4 
 order by e.asian desc)
 
 select 
@@ -277,15 +360,6 @@ select
 	mode() within group (order by women_in_county) mode_women
 from table_es_a
 
-select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
-	e.area_name,
-	e.asian ,
-	s.women_in_county
-from ethnicity e
-join sex s on e.fips = s.fips 
-where e.fips like '%000'
-order by e.asian desc
-limit 5
 
 
 
@@ -312,16 +386,44 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from ethnicity e 
-where e.hawaiian between 9.5 and 12.7 and e.candidate is not null
+where e.hawaiian between 9.5 and 12.7
 order by sum_votes_candidate DESC 
 
 select 	-- w których stanach jest najwiêcej hrabstw, w których mieszka dana grupa etniczna
-	coalesce(e.state, e.area_name),
-	count(*) over (partition by e.state)  as num_county,
-	e.fips 
+	e.state,
+	count(*) as num_county
 from ethnicity e 
 where e.hawaiian between 9.5 and 12.7
+group by e.state 
 order by num_county desc
+
+select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
+	cf.area_name ,
+	cf."RHI525214" ,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000'
+order by cf."RHI525214" desc
+limit 10
+
+with table_h as -- jaki faktycznie wp³yw na wybory w danych stanach mia³a okreœlona grupa etniczna
+(select 
+	pr.state ,
+	pr.party ,
+	pr.candidate ,
+	sum(pr.votes) as sum_votes
+from primary_results pr 
+where pr.state in (select e.state from ethnicity e where e.hawaiian between 9.5 and 12.7)
+group by pr.candidate, pr.party, pr.state 
+order by pr.state asc, sum_votes desc)
+
+select 
+	state,	
+	party,
+	sum(sum_votes) sum_votes_state
+from table_h
+group by state, party
+order by state asc, sum_votes_state desc
 
 with table_es_h as
 (select 	-- jakie to s¹ hrabstwa i jaki w nich jest stosunek kobiet do mê¿czyzn
@@ -332,6 +434,7 @@ with table_es_h as
 from ethnicity e 
 join sex s on e.fips = s.fips 
 where e.hawaiian between 9.5 and 12.7
+group by 1,2,3,4
 order by e.hawaiian desc)
 
 select 
@@ -341,15 +444,6 @@ select
 	mode() within group (order by women_in_county) mode_women
 from table_es_h
 
-select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
-	e.area_name,
-	e.hawaiian ,
-	s.women_in_county
-from ethnicity e
-join sex s on e.fips = s.fips 
-where e.fips like '%000'
-order by e.hawaiian desc
-limit 5
 
 
 
@@ -381,16 +475,44 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from ethnicity e 
-where e.two_or_more between 22.0 and 30.0 and e.candidate is not null  
+where e.two_or_more between 22.0 and 30.0  
 order by sum_votes_candidate desc
 
 select 	-- w których stanach jest najwiêcej hrabstw, w których mieszka dana grupa etniczna
-	coalesce(e.state, e.area_name),
-	count(*) over (partition by e.state)  as num_county,
-	e.fips 
+	e.state,
+	count(*) as num_county
 from ethnicity e 
 where e.two_or_more between 22.0 and 30.0
+group by e.state 
 order by num_county desc
+
+select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
+	cf.area_name ,
+	cf."RHI625214" ,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000'
+order by cf."RHI625214" desc
+limit 10
+
+with table_tom as -- jaki faktycznie wp³yw na wybory w danych stanach mia³a okreœlona grupa etniczna
+(select 
+	pr.state ,
+	pr.party ,
+	pr.candidate ,
+	sum(pr.votes) as sum_votes
+from primary_results pr 
+where pr.state in (select e.state from ethnicity e where e.two_or_more between 22.0 and 30.0)
+group by pr.candidate, pr.party, pr.state 
+order by pr.state asc, sum_votes desc)
+
+select 
+	state,	
+	party,
+	sum(sum_votes) sum_votes_state
+from table_tom
+group by state, party
+order by state asc, sum_votes_state desc
 
 with table_es_tom as
 (select 	-- jakie to s¹ hrabstwa i jaki w nich jest stosunek kobiet do mê¿czyzn
@@ -401,6 +523,7 @@ with table_es_tom as
 from ethnicity e 
 join sex s on e.fips = s.fips 
 where e.two_or_more between 22.0 and 30.0
+group by 1,2,3,4
 order by e.two_or_more desc)
 
 select 
@@ -410,15 +533,6 @@ select
 	mode() within group (order by women_in_county) mode_women
 from table_es_tom
 
-select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
-	e.area_name,
-	e.two_or_more ,
-	s.women_in_county
-from ethnicity e
-join sex s on e.fips = s.fips 
-where e.fips like '%000'
-order by e.two_or_more desc
-limit 5
 
 
 
@@ -443,16 +557,44 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from ethnicity e 
-where e.hispanic_latino between 71.8 and 96.0 
+where e.hispanic_latino between 71.9 and 96.0 
 order by sum_votes_candidate desc
 
 select 	-- w których stanach jest najwiêcej hrabstw, w których mieszka dana grupa etniczna
-	coalesce(e.state, e.area_name),
-	count(*) over (partition by e.state)  as num_county,
-	e.fips 
+	e.state,
+	count(*) as num_county
 from ethnicity e 
 where e.hispanic_latino between 71.8 and 96.0
+group by e.state 
 order by num_county desc
+
+select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
+	cf.area_name ,
+	cf."RHI725214" ,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000'
+order by cf."RHI725214" desc
+limit 10
+
+with table_hl as -- jaki faktycznie wp³yw na wybory w danych stanach mia³a okreœlona grupa etniczna
+(select 
+	pr.state ,
+	pr.party ,
+	pr.candidate ,
+	sum(pr.votes) as sum_votes
+from primary_results pr 
+where pr.state in (select e.state from ethnicity e where e.hispanic_latino between 71.8 and 96.0)
+group by pr.candidate, pr.party, pr.state 
+order by pr.state asc, sum_votes desc)
+
+select 
+	state,	
+	party,
+	sum(sum_votes) sum_votes_state
+from table_hl
+group by state, party
+order by state asc, sum_votes_state desc
 
 with table_es_hl as
 (select 	-- jakie to s¹ hrabstwa i jaki w nich jest stosunek kobiet do mê¿czyzn
@@ -463,6 +605,7 @@ with table_es_hl as
 from ethnicity e 
 join sex s on e.fips = s.fips 
 where e.hispanic_latino between 71.8 and 96.0
+group by 1,2,3,4
 order by e.hispanic_latino desc)
 
 select 
@@ -472,15 +615,6 @@ select
 	mode() within group (order by women_in_county) mode_women
 from table_es_hl
 
-select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
-	e.area_name,
-	e.hispanic_latino ,
-	s.women_in_county
-from ethnicity e
-join sex s on e.fips = s.fips 
-where e.fips like '%000'
-order by e.hispanic_latino desc
-limit 5
 
 
 
@@ -504,16 +638,44 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from ethnicity e 
-where e.white_alone between 73.9 and 99.0 and e.candidate is not null 
+where e.white_alone between 74.7 and 99.0
 order by sum_votes_candidate DESC 
 
 select 	-- w których stanach jest najwiêcej hrabstw, w których mieszka dana grupa etniczna
-	coalesce(e.state, e.area_name),
-	count(*) over (partition by e.state)  as num_county,
-	e.fips 
+	e.state,
+	count(*) as num_county
 from ethnicity e 
 where e.white_alone between 73.9 and 99.0
+group by e.state 
 order by num_county desc
+
+select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
+	cf.area_name ,
+	cf."RHI825214" ,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000'
+order by cf."RHI825214" desc
+limit 10
+
+with table_wa as -- jaki faktycznie wp³yw na wybory w danych stanach mia³a okreœlona grupa etniczna
+(select 
+	pr.state ,
+	pr.party ,
+	pr.candidate ,
+	sum(pr.votes) as sum_votes
+from primary_results pr 
+where pr.state in (select e.state from ethnicity e where e.white_alone between 73.9 and 99.0)
+group by pr.candidate, pr.party, pr.state 
+order by pr.state asc, sum_votes desc)
+
+select 
+	state,	
+	party,
+	sum(sum_votes) sum_votes_state
+from table_wa
+group by state, party
+order by state asc, sum_votes_state desc
 
 with table_es_wa as
 (select 	-- jakie to s¹ hrabstwa i jaki w nich jest stosunek kobiet do mê¿czyzn
@@ -524,6 +686,7 @@ with table_es_wa as
 from ethnicity e 
 join sex s on e.fips = s.fips 
 where e.white_alone between 73.9 and 99.0
+group by 1,2,3,4
 order by e.white_alone desc)
 
 select 
@@ -532,17 +695,6 @@ select
 	avg(women_in_county) as avg_women,
 	mode() within group (order by women_in_county) mode_women
 from table_es_wa
-
-select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
-	e.area_name,
-	e.white_alone ,
-	s.women_in_county
-from ethnicity e
-join sex s on e.fips = s.fips 
-where e.fips like '%000'
-order by e.white_alone desc
-limit 5
-
 
 
 
@@ -556,8 +708,7 @@ with table_fb as -- obliczenie przedzia³ów
 	max(e.foreign_born) as max_fb,
 	min(e.foreign_born),
 	(max(e.foreign_born) - min(e.foreign_born)) / 4 as interval_fb
-from ethnicity e 
-where e.party is not null)
+from ethnicity e )
 
 select -- obliczenie granicy przedzia³u z najbardziej liczn¹ grup¹
 	(max_fb - interval_fb)
@@ -573,12 +724,40 @@ where e.foreign_born between 38.4 and 52.0
 order by sum_votes_candidate DESC 
 
 select 	-- w których stanach jest najwiêcej hrabstw, w których mieszka dana grupa etniczna
-	coalesce(e.state, e.area_name),
-	count(*) over (partition by e.state)  as num_county,
-	e.fips 
+	e.state,
+	count(*) as num_county
 from ethnicity e 
 where e.foreign_born between 38.4 and 52.0
+group by e.state 
 order by num_county desc
+
+select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
+	cf.area_name ,
+	cf."POP645213" ,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000'
+order by cf."POP645213" desc
+limit 10
+
+with table_fb as -- jaki faktycznie wp³yw na wybory w danych stanach mia³a okreœlona grupa etniczna
+(select 
+	pr.state ,
+	pr.party ,
+	pr.candidate ,
+	sum(pr.votes) as sum_votes
+from primary_results pr 
+where pr.state in (select e.state from ethnicity e where e.foreign_born between 38.4 and 52.0)
+group by pr.candidate, pr.party, pr.state 
+order by pr.state asc, sum_votes desc)
+
+select 
+	state,	
+	party,
+	sum(sum_votes) sum_votes_state
+from table_fb
+group by state, party
+order by state asc, sum_votes_state desc
 
 with table_es_fb as
 (select 	-- jakie to s¹ hrabstwa i jaki w nich jest stosunek kobiet do mê¿czyzn
@@ -589,6 +768,7 @@ with table_es_fb as
 from ethnicity e 
 join sex s on e.fips = s.fips 
 where e.foreign_born between 38.4 and 52.0
+group by 1,2,3,4
 order by e.foreign_born desc)
 
 select 
@@ -598,15 +778,6 @@ select
 	mode() within group (order by women_in_county) mode_women
 from table_es_fb
 
-select -- w których stanach dana grupa etniczna jest najbardziej liczna, jaka jest proporcja kobiet do mê¿czyzn (znacznie mniej informacji ni¿ z poprzedniego zapytania)
-	e.area_name,
-	e.foreign_born ,
-	s.women_in_county
-from ethnicity e
-join sex s on e.fips = s.fips 
-where e.fips like '%000'
-order by e.foreign_born desc
-limit 5
 
 
 
@@ -615,7 +786,7 @@ limit 5
 -- g³osowanie w zale¿noœci od p³ci
 create table sex as
 select 
-	coalesce(cf.fips, pr.fips) as fips,
+	cf.fips,
 	cf.area_name,
 	pr.county,	
 	pr.candidate,
@@ -624,15 +795,14 @@ select
 	pr.fraction_votes,	
 	cf."SEX255214" as women_in_county
 from county_facts cf
-left join primary_results pr on cf.fips = pr.fips 
+join primary_results pr on cf.fips = pr.fips 
 
 with table_wic as -- obliczenie przedzia³ów
 (select 
 	max(s.women_in_county) as max_wic,
 	min(s.women_in_county),
 	(max(s.women_in_county) - min(s.women_in_county)) / 4 as interval_wic
-from sex s 
-where s.party is not null)
+from sex s )
 
 select -- obliczenie granicy przedzia³u z najbardziej liczn¹ grup¹
 	(max_wic - interval_wic)
@@ -644,8 +814,15 @@ SELECT
 	sum(s.votes) over (partition by s.party) as sum_votes_party,
 	sum(s.votes) over (partition by s.candidate) as sum_votes_candidate
 from sex s 
-where s.women_in_county between 50.1 and 57.0 and s.candidate is not null
+where s.women_in_county between 50.1 and 57.0
 order by sum_votes_candidate DESC
+
+select -- w których stanach jest najwiêcej kobiet 
+	cf.area_name,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000' and cf."SEX255214" > 51.0
+order by cf."SEX255214" desc
 
 
 --kolejne przedzia³y, co siê dzieje kiedy spada liczba kobiet
@@ -656,7 +833,7 @@ SELECT
 	sum(s.votes) over (partition by s.party) as sum_votes_party,
 	sum(s.votes) over (partition by s.candidate) as sum_votes_candidate
 from sex s 
-where s.women_in_county between 43.4 and 50.1 and s.candidate is not null
+where s.women_in_county between 43.4 and 50.1
 order by sum_votes_candidate DESC
 
 SELECT 
@@ -665,7 +842,7 @@ SELECT
 	sum(s.votes) over (partition by s.party) as sum_votes_party,
 	sum(s.votes) over (partition by s.candidate) as sum_votes_candidate
 from sex s 
-where s.women_in_county between 36.7 and 43.4 and s.candidate is not null
+where s.women_in_county between 36.7 and 43.4
 order by sum_votes_candidate DESC
 
 SELECT 
@@ -674,10 +851,15 @@ SELECT
 	sum(s.votes) over (partition by s.party) as sum_votes_party,
 	sum(s.votes) over (partition by s.candidate) as sum_votes_candidate
 from sex s 
-where s.women_in_county between 30.0 and 36.7 and s.candidate is not null
+where s.women_in_county between 30.0 and 36.7 
 order by sum_votes_candidate DESC
 
-
+select -- w których stanach jest najwiêcej mêzczyzn 
+	cf.area_name,
+	cf."SEX255214" 
+from county_facts cf 
+where cf.fips like '%000' and cf."SEX255214" < 49.8
+order by cf."SEX255214" asc
 
 
 
@@ -688,6 +870,7 @@ order by sum_votes_candidate DESC
 create table education as
 select
 	pr.county,	
+	pr.state ,
 	pr.candidate,
 	pr.party,
 	pr.votes,
@@ -695,7 +878,7 @@ select
 	cf."EDU635213" as high_school_higher,
 	cf."EDU685213" as bachelor_or_higher
 from county_facts cf 
-left join primary_results pr on cf.fips = pr.fips 
+join primary_results pr on cf.fips = pr.fips 
 
 SELECT 
 	max(e.high_school_higher) as max_hs,
@@ -705,7 +888,6 @@ SELECT
 	min(e.bachelor_or_higher),
 	(max(e.bachelor_or_higher) - min(e.bachelor_or_higher)) / 4 as interval_b
 from education e 
-where e.party is not null
 
 
 --g³osowanie w zale¿noœci od liczby osób z wykszta³ceniem high_school (odpowiednik polskiego liceum) lub wy¿szym
@@ -725,7 +907,7 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from education e 
-where e.high_school_higher between 58.5 and 72.0 and e.candidate is not null
+where e.high_school_higher between 58.5 and 72.0
 order by sum_votes_candidate DESC
 
 SELECT 
@@ -734,7 +916,7 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from education e 
-where e.high_school_higher between 72.0 and 85.5 and e.candidate is not null
+where e.high_school_higher between 72.0 and 85.5
 order by sum_votes_candidate DESC
 
 SELECT 
@@ -743,8 +925,39 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from education e 
-where e.high_school_higher between 85.5 and 99.0 and e.candidate is not null 
-order by sum_votes_candidate DESC
+where e.high_school_higher between 85.5 and 99.0
+order by sum_votes_candidate desc
+
+select -- w których stanach jest najmniej osób z wykszta³cenie high school lub wy¿szym 
+	cf.area_name,
+	cf."EDU635213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."EDU635213" < 85.0
+order by cf."EDU635213" asc
+
+select -- w których stanach jest najwiêcej hrabstwa, w których jest najmniej osób z wykszta³ceniem œrednim
+	e.state ,
+	count(*) as num_county
+from education e 
+where e.high_school_higher between 45.0 and 58.5
+group by e.state
+order by num_county desc
+
+select -- w których stanach jest najwiêcej osób z wykszta³cenie high school lub wy¿szym 
+	cf.area_name,
+	cf."EDU635213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."EDU635213" > 90.0
+order by cf."EDU635213" desc
+
+select -- w których stanach jest najwiêcej hrabstwa, w których jest najwiêcej osób z wykszta³ceniem œrednim
+	e.state ,
+	count(*) as num_county
+from education e 
+where e.high_school_higher between 85.5 and 99.0
+group by e.state
+order by num_county desc
+
 
 
 
@@ -756,7 +969,7 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from education e 
-where e.bachelor_or_higher between 3.2 and 21.0 and e.candidate is not null
+where e.bachelor_or_higher between 3.2 and 21.0 
 order by sum_votes_candidate DESC
 
 SELECT 
@@ -765,7 +978,7 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from education e 
-where e.bachelor_or_higher between 21.0 and 38.8 and e.candidate is not null
+where e.bachelor_or_higher between 21.0 and 38.8 
 order by sum_votes_candidate DESC
 
 SELECT 
@@ -774,7 +987,7 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from education e 
-where e.bachelor_or_higher between 38.8 and 56.6 and e.candidate is not null 
+where e.bachelor_or_higher between 38.8 and 56.6 
 order by sum_votes_candidate DESC
 
 SELECT 
@@ -783,6 +996,216 @@ SELECT
 	sum(e.votes) over (partition by e.party) as sum_votes_party,
 	sum(e.votes) over (partition by e.candidate) as sum_votes_candidate
 from education e 
-where e.bachelor_or_higher between 56.6 and 74.5 and e.candidate is not null
---group by e.candidate 
-order by sum_votes_candidate DESC
+where e.bachelor_or_higher between 56.6 and 74.5
+order by sum_votes_candidate desc
+
+select -- w których stanach jest najmniej osób z wykszta³cenie bachelor
+	cf.area_name ,	
+	cf."EDU685213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."EDU685213" < 25.0
+order by cf."EDU685213" asc
+
+select -- w których stanach jest najwiêcej hrabstwa, w których jest najmniej osób z wykszta³ceniem wy¿szym
+	e.state ,
+	count(*) as num_county
+from education e 
+where e.bachelor_or_higher between 3.2 and 21.0
+group by e.state
+order by num_county desc
+
+select -- w których stanach jest najwiêcej osób z wykszta³cenie bachelor lub wy¿szym 
+	cf.area_name,
+	cf."EDU685213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."EDU685213" > 35.0
+order by cf."EDU685213" desc
+
+select -- w których stanach jest najwiêcej hrabstwa, w których jest najwiêcej osób z wykszta³ceniem wy¿szym
+	e.state ,
+	count(*) as num_county
+from education e 
+where e.high_school_higher between 56.6 and 74.5
+group by e.state
+order by num_county desc
+
+
+
+
+
+-- zarobki
+
+create table income as
+select
+	pr.county,
+	pr.state ,
+	pr.candidate,
+	pr.party,
+	pr.votes,
+	pr.fraction_votes,
+	cf."INC910213" as per_capita,
+	cf."INC110213" as median_income,
+	cf."PVY020213" as below_poverty
+from county_facts cf 
+join primary_results pr on cf.fips = pr.fips
+
+SELECT 
+	max(i.per_capita) as max_pc,
+	min(i.per_capita),
+	(max(i.per_capita) - min(i.per_capita)) / 4 as interval_pc,
+	max(i.median_income) as max_b,
+	min(i.median_income),
+	(max(i.median_income) - min(i.median_income)) / 4 as interval_b
+from income i 
+
+--dochód na osobê
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.per_capita between 8768.0 and 22200.5
+order by sum_votes_candidate desc
+
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.per_capita between 22200.5 and 35633.0
+order by sum_votes_candidate desc
+
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.per_capita between 35633.0 and 49065.5
+order by sum_votes_candidate desc
+
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.per_capita between 49065.5 and 62498.0
+order by sum_votes_candidate desc
+
+select -- w których stanach jest najmniejszy dochód na osobê
+	cf.area_name ,	
+	cf."INC910213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."INC910213" < 25000
+order by cf."INC910213" asc
+
+select -- w których stanach jest najwiêkszy dochód na osobê
+	cf.area_name ,	
+	cf."INC910213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."INC910213" > 30000
+order by cf."INC910213" desc
+
+
+
+
+
+
+--œredni przychód na domostwo
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.median_income between 19986.0 and 45549.0
+order by sum_votes_candidate desc
+
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.median_income between 45549.0 and 71112.0
+order by sum_votes_candidate desc
+
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.median_income between 71112.0 and 96675.0 
+order by sum_votes_candidate desc
+
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.median_income between 96675.0 and 122238.0
+order by sum_votes_candidate desc
+
+select -- w których stanach jest najmniejszy dochód na domostwo
+	cf.area_name ,	
+	cf."INC110213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."INC110213" < 45000
+order by cf."INC110213" asc
+
+select -- w których stanach jest najwiêkszy dochód na domostwo
+	cf.area_name ,	
+	cf."INC110213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."INC110213" > 60000
+order by cf."INC110213" desc
+
+
+
+
+
+
+-- osoby ¿yj¹ce poni¿ej poziomu ubóstwa
+SELECT 
+	max(i.below_poverty) as max_bp,
+	min(i.below_poverty),
+	(max(i.below_poverty) - min(i.below_poverty)) / 4 as interval_bp
+from income i 
+where i.party is not null
+
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.below_poverty between 40.1 and 53.3
+order by sum_votes_candidate desc
+
+SELECT 
+	distinct(i.candidate),
+	i.party,
+	sum(i.votes) over (partition by i.party) as sum_votes_party,
+	sum(i.votes) over (partition by i.candidate) as sum_votes_candidate
+from income i 
+where i.below_poverty between 0.8 and 14.0
+order by sum_votes_candidate desc
+
+select -- w których stanach jest najwiêcej osób ¿yj¹cych poni¿ej poziomu ubóstwa
+	cf.area_name ,	
+	cf."PVY020213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."PVY020213" > 18.0
+order by cf."PVY020213" desc
+
+select -- w których stanach jest najmniej osób ¿yj¹cych poni¿ej poziomu ubóstwa
+	cf.area_name ,	
+	cf."PVY020213" 
+from county_facts cf 
+where cf.fips like '%000' and cf."PVY020213" < 11.5
+order by cf."PVY020213" asc
