@@ -48,6 +48,7 @@ st.write("""
 ***
 """)
 
+
 # Divide page to 3 columns (col1 = sidebar, col2 and col3 = page contents)
 col1 = st.sidebar
 col2, col3 = st.columns((3,1))
@@ -113,7 +114,7 @@ country_dict = {
     "France": "FR",
     "Germany": "DE",
     "Great Britain": "GB",
-    "Itlay": "IT",
+    "Italy": "IT",
     "Mexico": "MX",
     "New Zealand": "NZ",
     "Spain": "ES",
@@ -139,18 +140,21 @@ if col2.button("Country Stats"):
 
     # Number of projects each year
     # col1, col2 = st.columns(2)
-    country_filter = df[df['country'] == selected_country_conv]
-    data = country_filter.groupby(by="year_launched").size().reset_index(name="sum")
-    plt.xlabel('Year', fontdict={'fontsize': 15})
-    plt.ylabel('Qty of projects', fontdict={'fontsize': 15})
+    country_filter = df[df["country"] == selected_country_conv]
+    data_all = country_filter.groupby(by="year_launched").size().reset_index(name="sum")
+    success_filter = country_filter[country_filter["state_new"] == 1]
+    data_success = success_filter.groupby(by="year_launched").size().reset_index(name="sum_success")
+    data = pd.merge(data_all, data_success, on="year_launched", how="left")
+    plt.xlabel("Year", fontdict={"fontsize": 15})
+    plt.ylabel("Qty of projects", fontdict={"fontsize": 15})
     plt.xticks(fontsize=13)
     plt.yticks(fontsize=13)
-    plt.title('Number of projects each year', fontdict={'fontname': 'monospace', 'fontsize': 18})
+    plt.title("Number of projects each year", fontdict={"fontname": "monospace", "fontsize": 18})
     plt.xlim(2008.5,2018.5)
-    plt.bar(data["year_launched"], data["sum"], color='#5588cc', width=0.5, fill=True, linestyle=':', edgecolor='#000000')
+    plt.bar(data["year_launched"], data["sum"], color="#5588cc", width=0.5, fill=True, linestyle=":", edgecolor="#000000", label="Total")
+    plt.bar(data["year_launched"], data["sum_success"], color="#29528a", width=0.5, fill=True, linestyle=":", edgecolor="#000000", label="Succeed")
+    plt.legend()
     col2.pyplot()
-
-    col2.dataframe(data[["year_launched", "sum"]])
 
     # Average duration of the project
     avg_dur = round(country_filter["duration"].mean(), 1)
@@ -158,7 +162,7 @@ if col2.button("Country Stats"):
     col2.warning("Average duration of the project in " + selected_country + ": " + str(avg_dur) + " days")
     
     # Percent of successful projects
-    success_filter = country_filter[country_filter['state']=='successful']
+    success_filter = country_filter[country_filter["state"]=="successful"]
     perc_success = round(len(success_filter)/len(country_filter)*100, 1)
     
     col2.warning("Percentage of successful projects in this country: " + str(perc_success) + " %.")
@@ -178,22 +182,31 @@ if col2.button("Country Stats"):
     col2.info("The project had " + str(project_best_dict["backers"]) + " founders and was submitted in the " + project_best_dict["main_category"] + " category.")
 
     # The best project (the largest number of backers)
-    top_backers = pro_bes['backers'].idxmax()
+    top_backers = pro_bes["backers"].idxmax()
     top_backers_dict = pro_bes.loc[top_backers].to_dict()
 
-    col2.error("The project with the largest number of backers was \"" + top_backers_dict['name'] + "\". It had " + str(top_backers_dict['backers']) + " founders.")
+    col2.error("The project with the largest number of backers was \"" + top_backers_dict["name"] + "\". It had " + str(top_backers_dict['backers']) + " founders.")
+    
+    image_3 = Image.open("png/" + selected_country_conv +"b.png")
+    col2.image(image_3, use_column_width=True)
+
+    # Sum backers in selected country
+    sum_backers = country_filter["backers"].sum()
+    
+    col2.warning("The total number of people supporting crowdfunding projects in this country is " + str(sum_backers) + ".")
+
 
     # The most popular category
-    category_filter = country_filter.groupby('main_category')
-    m_cat_list = category_filter['main_category'].count().sort_values(ascending=False).head(1).to_dict()
+    category_filter = country_filter.groupby("main_category")
+    m_cat_list = category_filter["main_category"].count().sort_values(ascending=False).head(1).to_dict()
     
     for cat, num in m_cat_list.items():
         col2.warning("The most popular category in " + selected_country + " is " + cat + " (" + str(num) + " projects).")
     
     # The most successful main category
-    category_filter_succes = country_filter[country_filter['state']=='successful']
-    category_filter_succes = category_filter_succes.groupby('main_category')
-    m_cat_list2 = category_filter_succes['main_category'].count().sort_values(ascending=False).head(1).to_dict()
+    category_filter_succes = country_filter[country_filter["state"]=="successful"]
+    category_filter_succes = category_filter_succes.groupby("main_category")
+    m_cat_list2 = category_filter_succes["main_category"].count().sort_values(ascending=False).head(1).to_dict()
     
     for cat2, num2 in m_cat_list2.items():
         col2.warning("The category with the most successful projects is " + cat2 + ". There were " + str(num2) + " completed  projects.")
@@ -208,7 +221,7 @@ col2.subheader("🠈 To find out what are the chances for your project to succee
 col2.text("")
 
 # Sidebar
-col1.header('Input Options')
+col1.header("Input Options")
 
 # Main category selection
 sorted_unique_m_category = sorted(df["main_category"].unique())
@@ -221,7 +234,7 @@ sorted_unique_category = sorted(main_cat_select["category"].unique())
 selected_category = col1.multiselect("Category", sorted_unique_category, sorted_unique_category)
 
 # Project duration selection
-selected_duration = col1.slider("How many days is the fundraising going to last?", min_value=0, max_value=100)
+selected_duration = col1.slider("How many days is the fundraising going to last?", min_value=1, max_value=100)
     
 # Project amount selection
 selected_amount = col1.number_input("How much money do you want to collect? [$]", step=10)
@@ -274,8 +287,20 @@ for start, stop in interval_list:
                                     (cf["usd_goal_real"] >= amount_list[3])]
 
 col2.header("Display Projects Info with Selected Params")
-col2.info('Data Quantity: ' + str(df_selected_projects.shape[0]) + " projects.")
-col2.dataframe(df_selected_projects)
+col2.success("Data Quantity: " + str(df_selected_projects.shape[0]) + " projects (" + str(df_selected_projects[df_selected_projects["state_new"] == 1].shape[0]) + " successful).")
+col2.dataframe(df_selected_projects[["name", "category", 
+                                    "main_category", "state", 
+                                    "backers", "country", 
+                                    "usd_pledged_real", 
+                                    "usd_goal_real", 
+                                    "launched_new", "duration"]].rename(
+                                        columns= {
+                                            "main_category": "main category",
+                                            "usd_pledged_real" : "collected [$]",
+                                            "usd_goal_real": "goal [$]",
+                                            "launched_new": "launched",
+                                            "duration": "duration [days]"
+                                        }))
 
 # Download selected projects data
 # https://discuss.streamlit.io/t/how-to-download-file-in-streamlit/1806
@@ -293,7 +318,7 @@ col2.markdown(filedownload(df_selected_projects), unsafe_allow_html=True)
 ######################
 
 col2.text("")
-col2.header("Probability of getting found")
+col2.header("Probability of getting funds")
 
 def mcat_prob():
     # Founded projects in selected main category
@@ -428,26 +453,24 @@ for start, stop in interval_list:
                              (cf["usd_goal_real"] >= amount_list[3])) / cf["ID"].count()
 
 if p_abcde == 0 or p_abcd == 0:
-    answear = "The overal probability cannot be determined"
-# elif p_abcd <= 5:
-#     p = round((p_abcde / p_abcd) * 100, 1)
-#     answear = "The probability of getting funds is " + str(p) + "% but, as you can see above, there are too little data for this result to be reliable."
+    answear = "##### The overal probability cannot be determined"
 else:
     p = round((p_abcde / p_abcd) * 100, 1)
-    answear = "The probability of getting fund is " + str(p) + "%"
-
-
+    answear = f"##### The overall probability of getting funds is {p}%"
 
 
 col2.text("")
 if col2.button("Calculate"):
-
-    col2.text("Probability of funding a project in selected main categories" + str(selected_m_category) + ": " + str(mcat_prob()) + "%.")
     col2.text("")
-    col2.text("Probability of funding a project in selected categories" + str(selected_category) + ": " + str(cat_prob()) + "%.")
+    col2.markdown(f"""
+    ##### Probability of funding a project in selected main categories: 
+    <span style='color:limegreen; font-family:Papyrus; font-size:2.5em; display: block; text-align:center;'><b> {mcat_prob()}% </b></span>.
+    """, unsafe_allow_html=True)
     col2.text("")
-    col2.text("Probability of funding for project duration " + str(selected_duration) + " days: " + str(prob_duration) + "%.")
+    col2.markdown(f"##### Probability of funding a project in selected categories: {cat_prob()}%.")
     col2.text("")
-    col2.text("Probability of financing a project with an estimated cost of $ " + str(selected_amount) + ": " + str(prob_amount) + "%.")
+    col2.markdown(f"##### Probability of funding for project duration {selected_duration} days: {prob_duration}%.")
     col2.text("")
-    col2.text(answear)
+    col2.markdown(f"##### Probability of financing a project with an estimated cost of $ {selected_amount}: {prob_amount}%.")
+    col2.text("")
+    col2.markdown(answear)
