@@ -40,7 +40,7 @@ st.write("This app helps to improve your crowdfunding project!")
 
 expander_bar = st.expander("About")
 expander_bar.markdown("""
-* **Python libraries:** numpy, pandas, streamlit, matplotlib, base64, PIL
+* **Python libraries:** numpy, pandas, streamlit, matplotlib, seaborn, base64, PIL
 * **Data source:** [Kaggle.com](https://www.kaggle.com/kemical/kickstarter-projects)
 * **App Developers:** M.Majdak, D.Migoń, P.Rakowska [github.com](https://github.com/infoshareacademy/paradoma)
 """)
@@ -189,7 +189,7 @@ if col2.button("Country Stats"):
     
     col2.text("")
     image_3 = Image.open("png/" + selected_country_conv +"b.png")
-    col2.image(image_3, use_column_width=True)
+    col2.image(image_3, width=800)
 
     # Sum backers in selected country
     sum_backers = country_filter["backers"].sum()
@@ -484,7 +484,10 @@ if col2.button("Calculate"):
     col2.text("")
     col2.markdown(answear, unsafe_allow_html=True)
 
-# How the user can improve his project?
+######################
+# Output - improving project
+######################
+
 col2.text("")
 col2.header("To improve your project, click below")
 col2.text("")
@@ -710,3 +713,7 @@ if col2.button("I want to succeed"):
         plt.yticks(fontsize=13)
         sns.barplot(x=list_money_graph_x, y=list_money_graph_y, palette="crest")
         col2.pyplot()
+
+######################
+# THE END
+######################
