@@ -213,7 +213,7 @@ if col2.button("Country Stats"):
     m_cat_list2 = category_filter_succes["main_category"].count().sort_values(ascending=False).head(1).to_dict()
     
     for cat2, num2 in m_cat_list2.items():
-        col2.markdown(f"""<span style='color:darkgreen; font-family:Georgia; font-size:1.5em; display: block; text-align:center; border: 2px solid green;'> The category with the most successful projects is <b>{cat2}</b>. There were <b>{num2}</b> completed  projects.</span>""", unsafe_allow_html=True)
+        col2.markdown(f"""<span style='color:darkgreen; font-family:Georgia; font-size:1.5em; display: block; text-align:center; border: 2px solid green;'> The category with the highest number of successful projects is <b>{cat2}</b>. There were <b>{num2}</b> completed  projects.</span>""", unsafe_allow_html=True)
 
     col2.text("")
 
@@ -241,7 +241,7 @@ selected_category = col1.multiselect("Category", sorted_unique_category, sorted_
 selected_duration = col1.slider("How many days is the fundraising going to last?", min_value=1, max_value=100)
     
 # Project amount selection
-selected_amount = col1.number_input("How much money do you want to collect? [$]", step=10)
+selected_amount = col1.number_input("How much money do you want to collect? [$]", min_value=1, step=10)
 
 ######################
 # Output - after params selection
@@ -455,10 +455,10 @@ for start, stop in interval_list:
                              (cf["usd_goal_real"] >= amount_list[3])) / cf["ID"].count()
 
 if p_abcde == 0 or p_abcd == 0:
-    answear = "#### The overal probability cannot be determined"
+    answear = "### <span style='color:darkred; font-size:1.5em'>The overal probability cannot be determined!!!</span>"
 else:
     p = round((p_abcde / p_abcd) * 100, 1)
-    answear = (f"""#### The overall probability of getting funds is <span style='color:limegreen; font-family:Papyrus; font-size:4em; display: block; text-align:center;'><b> {p}% </b></span>.""")
+    answear = (f"""### The overall probability of getting funds is <span style='color:limegreen; font-family:"Comic Sans MS"; font-size:4em; display: block; text-align:center;'><b> {p}% </b></span>.""")
     
 # Response to the user
 
@@ -467,20 +467,20 @@ if col2.button("Calculate"):
     col2.text("")
     col2.markdown(f"""
     #### Probability of funding a project in selected main categories: 
-    <span style='color:limegreen; font-family:Papyrus; font-size:2.5em; display: block; text-align:center;'><b> {mcat_prob()}% </b></span>.
+    <span style='color:limegreen; font-family:"Comic Sans MS"; font-size:2.5em; display: block; text-align:center;'><b> {mcat_prob()}% </b></span>.
     """, unsafe_allow_html=True)
     col2.text("")
     col2.markdown(f"""
     #### Probability of funding a project in selected categories: 
-    <span style='color:limegreen; font-family:Papyrus; font-size:2.5em; display: block; text-align:center;'><b> {cat_prob()}% </b></span>.""", unsafe_allow_html=True)
+    <span style='color:limegreen; font-family:"Comic Sans MS"; font-size:2.5em; display: block; text-align:center;'><b> {cat_prob()}% </b></span>.""", unsafe_allow_html=True)
     col2.text("")
     col2.markdown(f"""
     #### Probability of funding for project duration {selected_duration} days: 
-    <span style='color:limegreen; font-family:Papyrus; font-size:2.5em; display: block; text-align:center;'><b> {prob_duration}% </b></span>.""", unsafe_allow_html=True)
+    <span style='color:limegreen; font-family:"Comic Sans MS"; font-size:2.5em; display: block; text-align:center;'><b> {prob_duration}% </b></span>.""", unsafe_allow_html=True)
     col2.text("")
     col2.markdown(f"""
     #### Probability of financing a project with an estimated cost of $ {selected_amount}: 
-    <span style='color:limegreen; font-family:Papyrus; font-size:2.5em; display: block; text-align:center;'><b> {prob_amount}% </b></span>.""", unsafe_allow_html=True)
+    <span style='color:limegreen; font-family:"Comic Sans MS"; font-size:2.5em; display: block; text-align:center;'><b> {prob_amount}% </b></span>.""", unsafe_allow_html=True)
     col2.text("")
     col2.markdown(answear, unsafe_allow_html=True)
 
@@ -526,7 +526,7 @@ if col2.button("I want to succeed"):
                     list_category_graph_x.append(i)
                     list_category_graph_y.append(b)
                 else: 
-                    info_1 = """<span style='color:darkred; font-family:Calibri; font-size:2em; display: block; text-align:center;'> <b>Congratulations! You choose the most successful main category in your country!</b> </span>"""
+                    info_1 = ""#"<span style='color:darkred; font-family:Calibri; font-size:2em; display: block; text-align:center;'> <b>Congratulations! You choose the most successful main category in your country!</b> </span>"""
         col2.markdown(info_1, unsafe_allow_html=True)
         if len(info_2) > 0:
             for info in info_2:
@@ -553,7 +553,7 @@ if col2.button("I want to succeed"):
             col2.markdown(f"""### Success rate of your category <span style='color:darkgreen; font-family:Calibri; font-size:1em;'><b>{one_cat}</b></span> is <span style='color:darkgreen; font-family:Calibri; font-size:1em;'><b>{c}%</b></span>.""", unsafe_allow_html=True)
         else:
             c = 0
-            col2.markdown(f"""<span style='color:darkred; font-family:Calibri; font-size:1.5em;'> <b>It's not possible to calculate success rate of your main category {one_mcat}</b>.</span>""", unsafe_allow_html=True)
+            col2.markdown(f"""<span style='color:darkred; font-family:Calibri; font-size:1.5em;'> <b>It's not possible to calculate success rate of your category {one_cat}</b>.</span>""", unsafe_allow_html=True)
 
         list_subcategory = category_filter["category"].unique().tolist()
         list_subcategory_graph_x = [one_cat]
@@ -573,7 +573,7 @@ if col2.button("I want to succeed"):
                     list_subcategory_graph_x.append(i)
                     list_subcategory_graph_y.append(d)
                 else: 
-                    info_3 = """<span style='color:darkred; font-family:Calibri; font-size:1.5em; display: block; text-align:center;'> <b>Congratulations! You choose the most successful category in your country!</b> </span>"""
+                    info_3 = ""#"<span style='color:darkred; font-family:Calibri; font-size:2em; display: block; text-align:center;'> <b>Congratulations! You choose the most successful category in your country!</b> </span>"""
         
         col2.markdown(info_3, unsafe_allow_html=True)
         if len(info_4) > 0:
@@ -637,7 +637,7 @@ if col2.button("I want to succeed"):
 * [crowdfundingpr.org](https://www.crowdfundingpr.org/ways-boost-kickstarter-campaign/)
 * [kickstarter.com](https://www.kickstarter.com/blog/shortening-the-maximum-project-length/)""")
     if better_t == 0:
-        col2.markdown("""<span style='color:darkred; font-family:Calibri; font-size:1.5em; display: block; text-align:center;'> <b> SEEMS THAT YOU SELECTED THE RIGHT RANGE!</b></span>""", unsafe_allow_html=True)    
+        col2.markdown("""<span style='color:darkred; font-family:Calibri; font-size:2em; display: block; text-align:center;'> <b> SEEMS THAT YOU SELECTED THE BEST RANGE!</b></span>""", unsafe_allow_html=True)    
     elif better_t > 0: 
        
         sns.set_theme(style="whitegrid", context="talk")
@@ -701,9 +701,8 @@ if col2.button("I want to succeed"):
                 col2.markdown(f"#### Projects in your category with anticipated money range of <span style='color:darkgreen; font-family:Calibri; font-size:1em;'><b>{round(money[0], 2)} - {round(money[1], 2)}</b></span> $ are characterized by success rate of: <span style='color:darkgreen; font-family:Calibri; font-size:1em;'><b>{h}%</b></span>.""", unsafe_allow_html=True)
                 col2.markdown("""<span style='color:darkred; font-family:Calibri; font-size:1.5em; display: block; text-align:center;'> <b> The result is worse than ours. Let's not go that way</b>.</span>""", unsafe_allow_html=True)
     if better_m == 0:
-        col2.markdown("""<span style='color:darkred; font-family:Calibri; font-size:1.5em; display: block; text-align:center;'> <b> SEEMS THAT YOU SELECTED THE RIGHT RANGE</b></span>""", unsafe_allow_html=True)
+        col2.markdown("""<span style='color:darkred; font-family:Calibri; font-size:2em; display: block; text-align:center;'> <b> SEEMS THAT YOU SELECTED THE BEST RANGE!</b></span>""", unsafe_allow_html=True)
     elif better_m > 0:
-
         sns.set_theme(style="whitegrid", context="talk")
 
         plt.figure(figsize=(10, 5))
