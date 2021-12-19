@@ -653,18 +653,18 @@ if col2.button("I want to succeed"):
     # Money
     if selected_amount < amount_list[0]:
         money_y = 0
-        money_x = amount_list[0]
+        money_x = round(amount_list[0], 2)
     elif selected_amount >= amount_list[0] and selected_amount < amount_list[1]:
-        money_y = amount_list[0]
-        money_x = amount_list[1]
+        money_y = round(amount_list[0], 2)
+        money_x = round(amount_list[1], 2)
     elif selected_amount >= amount_list[1] and selected_amount < amount_list[2]:
-        money_y = amount_list[1]
-        money_x = amount_list[2]
+        money_y = round(amount_list[1], 2)
+        money_x = round(amount_list[2], 2)
     elif selected_amount >= amount_list[2] and selected_amount < amount_list[3]:
-        money_y = amount_list[2]
-        money_x = amount_list[3]  
+        money_y = round(amount_list[2], 2)
+        money_x = round(amount_list[3], 2)  
     elif selected_amount >= amount_list[3]:
-        money_y = amount_list[3]
+        money_y = round(amount_list[3], 2)
         money_x = 25000000 
 
     col2.markdown(""""<span style='color:darkgreen; font-family:Georgia; font-size:2em; display: block; text-align:center;'> <b>MONEY</b></span>.""", unsafe_allow_html=True)
@@ -677,7 +677,7 @@ if col2.button("I want to succeed"):
         col2.text("")
         col2.text("")
 
-    money_ranges= [(0,amount_list[0]),(amount_list[0],amount_list[1]),(amount_list[1],amount_list[2]), (amount_list[2],amount_list[3]),(amount_list[3],25000000) ]
+    money_ranges= [(0,round(amount_list[0], 2)),(round(amount_list[0], 2),round(amount_list[1], 2)),(round(amount_list[1], 2),round(amount_list[2], 2)), (round(amount_list[2], 2),round(amount_list[3], 2)),(round(amount_list[3], 2),25000000) ]
     better_m = 0
     list_money_graph_x = []
     list_money_graph_y =[]
