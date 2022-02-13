@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>Class of wine</title>
+  <link href='https://fonts.googleapis.com/css?family=Pacifico' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Arimo' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Hind:300' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+</head>
+
+<body style="background-color: #000000, background-image: url(wine.jpg);">
+ <div class="login">
+	<h2>Which class of Your wine?</h2>
+  
+     <!-- Main Input For Receiving Query to our ML -->
+    <form action="{{ url_for('predict')}}"method="post">
+      <input type="number" name="alcohol" placeholder="alcohol" required="required" min="8" max="16" step="0.1" />
+      <input type="number" name="sulphates" placeholder="sulphates" required="required" min="0.30" max="2.00" step="0.01" />
+      <input type="number" name="volatile acidity" placeholder="volatile acidity" required="required" min="0.100" max="1.600" step="0.005" />
+      <input type="number" name="total sulfur dioxide" placeholder="total sulfur dioxide" required="required" min="5" max="300" step="1" />
+      <input type="number" name="citric acid" placeholder="citric acid" required="required" min="0" max="1" step="0.01" />
+      <input type="number" name="pH" placeholder="pH" required="required" min="2.70" max="4.10" step="0.01" />
+      <input type="number" name="density" placeholder="density" required="required" min="0.990000" max="1.005000" step="0.000001" />
+        <button type="submit" class="btn btn-primary btn-block btn-large">Show me</button>
+    </form>
+
+   
+   <br>
+   {{ prediction_text }}
+
+ </div>
+
+
+</body>
+</html>
