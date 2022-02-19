@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+
+<html >
+<head>
+    <style>
+        
+.ticker-wrapper-v-image{
+    display: flex;	
+    position: relative;
+    left: 800px;
+    width: 100%;
+    height:auto;
+    overflow: hidden;
+  }
+  
+  .news-ticker-v-image{
+    list-style: none;
+    margin:0;
+    padding: 0;
+    animation: tic-v-image 45s cubic-bezier(1, 1, 0.5, 0) infinite;
+  }
+  
+  .news-ticker-v-image:hover { 
+    animation-play-state: paused; 
+  }
+  
+  .news-ticker-v-image li{
+    margin-bottom: 20px;
+  }
+    
+  .news-ticker-v-image .thumbnail {
+    max-width: 100%;
+    height: auto;
+    float: right;
+    margin-right: 10px;
+    display: inline-block;
+  }
+  .ticker-wrapper-v-image .clear {
+    clear: both;
+  }
+
+  @keyframes tic-v-image {
+    0%   {margin-top: 0;}
+    15%  {margin-top: -20%;}
+    30%  {margin-top: -40%;}
+    45%  {margin-top: -60%;}
+    60%  {margin-top: -80%;}
+    75%  {margin-top: -100%;}
+    90%  {margin-top: -120%;}
+    100% {margin-top: 0;}
+  }
+    </style>
+  <meta charset="UTF-8">
+  <title>Class of wine</title>
+  <link href='https://fonts.googleapis.com/css?family=Pacifico' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Arimo' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Hind:300' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+</head>
+
+<body style="background-color: #000000, background-image: url(wine.jpg);">
+
+
+ <div>
+  <p>Go back to the <a href="/">Home</a> page.</p>
+  <br>    
+  {{ prediction_text }}
+  <br>  
+  <br> 
+  <div class="ticker-wrapper-v-image">
+    <ul class="news-ticker-v-image">
+        <li>
+            <div class="thumbnail">
+                <a>
+                    {% for bike in dict_list %}
+    
+                    <img src="{{bike.plot}}" style = "width:50%;height:50%">
+    
+                    <p style='font-size:0.5em; font-weight:bold;'>{{bike.intro}}</p>
+  
+                    <p style='font-size:0.5em; font-weight:bold;  padding-bottom: 10px'>{{bike.duo}}</p>
+
+
+
+
+
+                    {% endfor %}
+                </a>
+            </div>
+        </li>   
+  </div>
+    
+</body>
+</html>
