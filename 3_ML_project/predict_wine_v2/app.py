@@ -1,26 +1,10 @@
-import numpy as np
 from flask import Flask, request, jsonify, render_template
 import pickle
 import math
-from tkinter import Y
-import pandas as pd
-import numpy as np
-from scipy import stats
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
-import warnings
-warnings.filterwarnings('ignore')
-import pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import ipywidgets as widgets
-from IPython.display import display
-from IPython.display import Image
-from ipywidgets import Box, Layout
 import seaborn as sns
 
 app = Flask(__name__)
