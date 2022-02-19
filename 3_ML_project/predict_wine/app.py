@@ -21,7 +21,7 @@ def predict():
     feat_5 = request.form["sulphates"]
     feat_6 = request.form["alcohol"]
 
-    int_features = [feat_0, feat_1, feat_2, feat_3, feat_4, feat_5, feat_6, math.log(float(feat_2)), math.log(float(feat_3)), math.log(float(feat_6))]
+    int_features = [feat_0, feat_1, feat_2, feat_3, feat_4, feat_5, feat_6, math.log(float(feat_2)+1), math.log(float(feat_3)+1), math.log(float(feat_6)+1)]
     final_features = [np.array(int_features)]
     prediction = model.predict(final_features)
 
